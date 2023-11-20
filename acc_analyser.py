@@ -6,18 +6,23 @@ import numpy as np
 from scipy.signal import stft
 from scipy.signal import welch
 from scipy.signal import find_peaks
+import os
 
 class Data:
 
-    def __init__(self):
+    def __init__(self, bag):
         self.arrival_time = []
         self.acc = []
 
         self.zero_time = 0
         self.sampling_rate = 0 # Hz
-        
+
+        self.bag_path = 'rosbag'
+        self.bag = bag
+
+        self.topic = '/imu/data/hr'
     def find_sample_rate(self):
-        with open(r'rosbag2/rosbag2_2023_11_20-20_50_28/metadata.yaml') as file:
+        with open(self.bag_path + '/' + self.bag + '/metadata.yaml') as file:
             acc_yaml = yaml.load(file, Loader=yaml.FullLoader)
             durration = acc_yaml['rosbag2_bagfile_information']['duration']['nanoseconds']
             message_count = acc_yaml['rosbag2_bagfile_information']['message_count']
@@ -27,9 +32,9 @@ class Data:
 
     def get_data(self):
 
-        with Reader("./rosbag2/rosbag2_2023_11_20-20_50_28") as reader:
+        with Reader('./' + self.bag_path + '/' + self.bag) as reader:
             for connection, timestamp, rawdata in reader.messages():
-                if connection.topic == '/imu/data/hr':
+                if connection.topic == self.topic:
                     msg = deserialize_cdr(rawdata, connection.msgtype)
                     if self.zero_time == 0:
                         self.zero_time = msg.header.stamp.sec
@@ -132,14 +137,38 @@ class Data:
         print(self.sampling_rate)
         print(data.calculate_rms())
 
-
-
 def main():
-    data = Data()
+    # Example list of available files
+
+    parent_directory = './rosbag'  # Replace with the path to your parent directory
+
+    # List all directories in the parent directory
+    available_folders = [d for d in os.listdir(parent_directory) if os.path.isdir(os.path.join(parent_directory, d))]
+
+    # Check if there are available folders
+    if not available_folders:
+        print("No data folders found.")
+        return
+
+    # Print the menu
+    print("Select a file to analyze:")
+    for i, (bag_name) in enumerate(available_folders):
+        print(f"{i + 1}: {bag_name}")
+
+    # User input for selection
+    choice = int(input("Enter your choice (number): ")) - 1
+
+    # Get the selected file
+    selected_bag = available_folders[choice]
+
+    # Create an instance of Data with the selected file
+    data = Data(selected_bag)
     data.find_sample_rate()
     data.get_data()
     data.plot_data(data)
-    
+
+    print(f"Sampling Rate: {data.sampling_rate}")
+    print(f"RMS: {data.calculate_rms()}")
 
 if __name__ == '__main__':
     main()
