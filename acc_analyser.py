@@ -4,6 +4,8 @@ from rosbags.rosbag2 import Reader
 from rosbags.serde import deserialize_cdr
 import numpy as np
 from scipy.signal import stft
+from scipy.signal import welch
+from scipy.signal import find_peaks
 
 class Data:
 
@@ -59,10 +61,20 @@ class Data:
     def calculate_stft(self):
         f, t, Zxx = stft(self.acc, fs=self.sampling_rate)
         return f, t, np.abs(Zxx)
+    
+    def calculate_psd(self):
+        f, Pxx = welch(self.acc, fs=self.sampling_rate, nperseg=1024)
+        return f, Pxx
+    
+    def find_peaks_in_psd(self, Pxx, height=None):
+        peaks, _ = find_peaks(Pxx, height=height)
+        return peaks
+        
+
 
     def plot_data(self, data):
 
-        fig, axs = plt.subplots(nrows=3, ncols=1, figsize=[12,10])
+        fig, axs = plt.subplots(nrows=2, ncols=1, figsize=[12,10])
         
         fft_magnitude, fft_freq = data.fft(data.acc)
 
@@ -88,15 +100,30 @@ class Data:
         axs[1].set_ylabel('Acceleration (z-axis)')
         axs[1].grid()
 
+        fig1, axs1 = plt.subplots(nrows=2, ncols=1, figsize=[12,10])
+
         f, t, Zxx = data.calculate_stft()
-        im = axs[2].pcolormesh(t, f, np.abs(Zxx), shading='gouraud')
-        axs[2].set_title('STFT Magnitude')
-        axs[2].set_xlabel('Time (sec)')
-        axs[2].set_ylabel('Frequency (Hz)')
-        axs[2].set_ylim([0, 30])
-        axs[2].grid()
-        fig.colorbar(im, ax=axs[2])
-        axs[2].grid()
+        im = axs1[0].pcolormesh(t, f, np.abs(Zxx), shading='gouraud')
+        # Change the limits of the plot to only show the data we care about
+        axs1[0].set_ylim([0, 30])
+        axs1[0].set_title('STFT Magnitude')
+        axs1[0].set_xlabel('Time (sec)')
+        axs1[0].set_ylabel('Frequency (Hz)')
+        axs1[0].grid()
+        fig1.colorbar(im, ax=axs1[0])
+        axs1[0].grid()
+
+        # PSD Plot
+        f_psd, Pxx = data.calculate_psd()
+        peaks = data.find_peaks_in_psd(Pxx, height=1)  # limit the lowest peak.
+
+        axs1[1].plot(f_psd, Pxx)
+        axs1[1].plot(f_psd[peaks], Pxx[peaks], "x")
+        axs1[1].set_xlim([0, 30])
+        axs1[1].set_title('Power Spectral Density')
+        axs1[1].set_xlabel('Frequency (Hz)')
+        axs1[1].set_ylabel('PSD [V**2/Hz]')
+
 
         plt.tight_layout()  # Adjusts the plots to fit into the figure area.
         plt.show()
