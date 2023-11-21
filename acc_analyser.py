@@ -27,7 +27,6 @@ class Data:
             durration = acc_yaml['rosbag2_bagfile_information']['duration']['nanoseconds']
             message_count = acc_yaml['rosbag2_bagfile_information']['message_count']
             self.sampling_rate = message_count / (durration * 10 ** -9)
-            print(f"Sample rate: {self.sampling_rate}")
 
 
     def get_data(self):
@@ -97,8 +96,8 @@ class Data:
         for i in range(n_dim):
             fft_magnitude, fft_freq = data.fft(data.acc[:, i])
             # Filter to avoid the spike at 0 Hz and focus around half the maximum frequency
-            lower_bound = 0.1  # Start slightly above 0 to avoid the spike
-            upper_bound = self.sampling_rate / 4  # Approximately half the Nyquist frequency
+            lower_bound = 0.0  # Start slightly above 0 to avoid the spike
+            upper_bound = self.sampling_rate / 2  # Approximately the Nyquist frequency
             valid_freqs = (fft_freq > lower_bound) & (fft_freq < upper_bound)
 
             fft_magnitude = fft_magnitude[valid_freqs]
@@ -124,7 +123,7 @@ class Data:
         f, t, Zxx = data.calculate_stft()
         im = axs1[0].pcolormesh(t, f, np.abs(Zxx), shading='gouraud')
         # Change the limits of the plot to only show the data we care about
-        axs1[0].set_ylim([0, 30])
+        axs1[0].set_ylim([0, self.sampling_rate / 4])
         axs1[0].set_title('STFT Magnitude')
         axs1[0].set_xlabel('Time (sec)')
         axs1[0].set_ylabel('Frequency (Hz)')
@@ -138,7 +137,7 @@ class Data:
 
         axs1[1].plot(f_psd, Pxx)
         axs1[1].plot(f_psd[peaks], Pxx[peaks], "x")
-        axs1[1].set_xlim([0, 30])
+        # axs1[1].set_xlim([0, 30])
         axs1[1].set_title('Power Spectral Density')
         axs1[1].set_xlabel('Frequency (Hz)')
         axs1[1].set_ylabel('PSD [V**2/Hz]')
@@ -148,8 +147,6 @@ class Data:
         plt.show()
         plt.clf()
 
-        print(self.sampling_rate)
-        print(data.calculate_rms())
 
 def main():
     parent_directory = './rosbag'  # Replace with the path to your parent directory
@@ -177,12 +174,14 @@ def main():
     data = Data(selected_bag)
     data.find_sample_rate()
     data.get_data()
-    data.apply_highpass_filter(cutoff_frequency=0.1)
-    # data.remove_gravity()
+    # data.apply_highpass_filter(cutoff_frequency=0.1)
+    data.remove_gravity()
     data.plot_data(data)
 
     print(f"Sampling Rate: {data.sampling_rate}")
+    print(f"Zero Time: {data.zero_time}")
     print(f"RMS: {data.calculate_rms()}")
+    print(f"Arrival Time: {data.arrival_time[:100]}")
 
 if __name__ == '__main__':
     main()
