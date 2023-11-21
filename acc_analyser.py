@@ -3,9 +3,8 @@ import yaml
 from rosbags.rosbag2 import Reader
 from rosbags.serde import deserialize_cdr
 import numpy as np
-from scipy.signal import stft
-from scipy.signal import welch
-from scipy.signal import find_peaks
+from scipy.signal import butter, filtfilt, stft, welch, find_peaks
+
 import os
 
 class Data:
@@ -46,6 +45,17 @@ class Data:
             
             self.arrival_time = np.array(self.arrival_time)
             self.acc = np.array(self.acc)
+    
+    def butter_highpass(self, cutoff, fs, order=5):
+        nyq = 0.5 * fs
+        normal_cutoff = cutoff / nyq
+        b, a = butter(order, normal_cutoff, btype='high', analog=False)
+        return b, a
+
+
+    def apply_highpass_filter(self, cutoff_frequency):
+        b, a = self.butter_highpass(cutoff_frequency, self.sampling_rate)
+        self.acc[:,2] = filtfilt(b, a, self.acc[:, 2])
 
     def remove_gravity(self):
         # Remove gravity
@@ -167,6 +177,7 @@ def main():
     data = Data(selected_bag)
     data.find_sample_rate()
     data.get_data()
+    data.apply_highpass_filter(cutoff_frequency=0.1)
     # data.remove_gravity()
     data.plot_data(data)
 
