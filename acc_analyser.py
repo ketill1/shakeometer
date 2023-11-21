@@ -27,7 +27,7 @@ class Data:
             durration = acc_yaml['rosbag2_bagfile_information']['duration']['nanoseconds']
             message_count = acc_yaml['rosbag2_bagfile_information']['message_count']
             self.sampling_rate = message_count / (durration * 10 ** -9)
-            print(self.sampling_rate)
+            print(f"Sample rate: {self.sampling_rate}")
 
 
     def get_data(self):
@@ -78,8 +78,10 @@ class Data:
     def plot_data(self, data):
 
         fig, axs = plt.subplots(nrows=2, ncols=1, figsize=[12,10])
-        colors = ['r', 'g', 'b']
-        for i in range(data.acc.shape[1]):
+        cmap = plt.get_cmap('viridis')
+        n_dim = data.acc.shape[1]
+        colors = [cmap(i) for i in np.linspace(0, 1, n_dim)]
+        for i in range(n_dim):
             fft_magnitude, fft_freq = data.fft(data.acc[:, i])
             # Filter to avoid the spike at 0 Hz and focus around half the maximum frequency
             lower_bound = 0.1  # Start slightly above 0 to avoid the spike
@@ -90,8 +92,8 @@ class Data:
             fft_freq = fft_freq[valid_freqs]
 
             # Plot the FFT result in the first subplot
-            axs[0].plot(fft_freq, fft_magnitude, colors[i])
-            axs[1].plot(data.arrival_time, data.acc[:, i], color=colors[i])
+            axs[0].plot(fft_freq, fft_magnitude, color=colors[n_dim-1-i], linewidth=1)
+            axs[1].plot(data.arrival_time, data.acc[:, i], color=colors[n_dim-1-i], linewidth=1)
 
         axs[0].set_title('Frequency Spectrum')
         axs[0].set_xlabel('Frequency (Hz)')
