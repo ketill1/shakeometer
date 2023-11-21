@@ -21,6 +21,7 @@ class Data:
         self.bag = bag
 
         self.topic = '/imu/data/hr'
+
     def find_sample_rate(self):
         with open(self.bag_path + '/' + self.bag + '/metadata.yaml') as file:
             acc_yaml = yaml.load(file, Loader=yaml.FullLoader)
@@ -31,7 +32,6 @@ class Data:
 
 
     def get_data(self):
-
         with Reader('./' + self.bag_path + '/' + self.bag) as reader:
             for connection, timestamp, rawdata in reader.messages():
                 if connection.topic == self.topic:
@@ -73,10 +73,7 @@ class Data:
         peaks, _ = find_peaks(Pxx, height=height)
         return peaks
         
-
-
     def plot_data(self, data):
-
         fig, axs = plt.subplots(nrows=2, ncols=1, figsize=[12,10])
         cmap = plt.get_cmap('viridis')
         n_dim = data.acc.shape[1]
@@ -139,8 +136,6 @@ class Data:
         print(data.calculate_rms())
 
 def main():
-    # Example list of available files
-
     parent_directory = './rosbag'  # Replace with the path to your parent directory
 
     # List all directories in the parent directory
