@@ -47,6 +47,12 @@ class Data:
             self.arrival_time = np.array(self.arrival_time)
             self.acc = np.array(self.acc)
 
+    def remove_gravity(self):
+        # Remove gravity
+        mean_acc_z = np.mean(self.acc[:, 2])
+        print(f"Mean acc z: {mean_acc_z}")
+        self.acc[:, 2] = self.acc[:, 2] - mean_acc_z
+
     def fft(self, acc):
         # FFT
         N = len(acc)
@@ -161,6 +167,7 @@ def main():
     data = Data(selected_bag)
     data.find_sample_rate()
     data.get_data()
+    # data.remove_gravity()
     data.plot_data(data)
 
     print(f"Sampling Rate: {data.sampling_rate}")
