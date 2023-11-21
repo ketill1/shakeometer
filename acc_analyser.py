@@ -42,18 +42,16 @@ class Data:
                     sec = msg.header.stamp.sec - self.zero_time
                     nanosec = msg.header.stamp.nanosec * 10 ** -9
                     self.arrival_time.append(sec + nanosec)
-                    # a = msg.linear_acceleration.x + msg.linear_acceleration.y + msg.linear_acceleration.z
-                    a = msg.linear_acceleration.z
-                    self.acc.append(a)
+                    self.acc.append((msg.linear_acceleration.x, msg.linear_acceleration.y, msg.linear_acceleration.z))
             
             self.arrival_time = np.array(self.arrival_time)
             self.acc = np.array(self.acc)
 
-    def fft(self, acc_z):
+    def fft(self, acc):
         # FFT
-        N = len(acc_z)
+        N = len(acc)
 
-        fft_result = np.fft.fft(acc_z)
+        fft_result = np.fft.fft(acc)
         fft_freq = np.fft.fftfreq(N, d=1./self.sampling_rate)
 
         # Taking the absolute value to get magnitude
@@ -61,14 +59,14 @@ class Data:
         return fft_magnitude, fft_freq
     
     def calculate_rms(self):
-        return np.sqrt(np.mean(np.square(self.acc)))
+        return np.sqrt(np.mean(np.square(self.acc[:, 2])))
     
     def calculate_stft(self):
-        f, t, Zxx = stft(self.acc, fs=self.sampling_rate)
+        f, t, Zxx = stft(self.acc[:, 2], fs=self.sampling_rate)
         return f, t, np.abs(Zxx)
     
     def calculate_psd(self):
-        f, Pxx = welch(self.acc, fs=self.sampling_rate, nperseg=1024)
+        f, Pxx = welch(self.acc[:, 2], fs=self.sampling_rate, nperseg=1024)
         return f, Pxx
     
     def find_peaks_in_psd(self, Pxx, height=None):
@@ -80,26 +78,27 @@ class Data:
     def plot_data(self, data):
 
         fig, axs = plt.subplots(nrows=2, ncols=1, figsize=[12,10])
-        
-        fft_magnitude, fft_freq = data.fft(data.acc)
+        colors = ['r', 'g', 'b']
+        for i in range(data.acc.shape[1]):
+            fft_magnitude, fft_freq = data.fft(data.acc[:, i])
+            # Filter to avoid the spike at 0 Hz and focus around half the maximum frequency
+            lower_bound = 0.1  # Start slightly above 0 to avoid the spike
+            upper_bound = self.sampling_rate / 4  # Approximately half the Nyquist frequency
+            valid_freqs = (fft_freq > lower_bound) & (fft_freq < upper_bound)
 
-        # Filter to avoid the spike at 0 Hz and focus around half the maximum frequency
-        lower_bound = 0.1  # Start slightly above 0 to avoid the spike
-        upper_bound = self.sampling_rate / 4  # Approximately half the Nyquist frequency
-        valid_freqs = (fft_freq > lower_bound) & (fft_freq < upper_bound)
+            fft_magnitude = fft_magnitude[valid_freqs]
+            fft_freq = fft_freq[valid_freqs]
 
-        fft_magnitude = fft_magnitude[valid_freqs]
-        fft_freq = fft_freq[valid_freqs]
+            # Plot the FFT result in the first subplot
+            axs[0].plot(fft_freq, fft_magnitude, colors[i])
+            axs[1].plot(data.arrival_time, data.acc[:, i], color=colors[i])
 
-        # Plot the FFT result in the first subplot
-        axs[0].plot(fft_freq, fft_magnitude, 'b')
         axs[0].set_title('Frequency Spectrum')
         axs[0].set_xlabel('Frequency (Hz)')
         axs[0].set_ylabel('Magnitude')
         axs[0].grid()
 
         # Plot the time series data in the second subplot
-        axs[1].plot(data.arrival_time, data.acc, 'r')
         axs[1].set_title('Acceleration Time Series')
         axs[1].set_xlabel('Time (sec)')
         axs[1].set_ylabel('Acceleration (z-axis)')
