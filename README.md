@@ -28,5 +28,5 @@
 10. Choose the bag folder with a number in the terminal window
 
 # If losing ssh connection during measurment:
-´htop´ then ´F8 + F9 + Enter´ to shut down the recording from an other terminal window.  
+`htop` then `F8 + F9 + Enter` to shut down the recording from an other terminal window.  
 
